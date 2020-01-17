@@ -10,6 +10,8 @@
     }, className]"
     @mousedown="elementDown"
     @touchstart="elementTouchDown"
+    @click.prevent.stop="addEvent($event, 'click')"
+    @keyup="addEvent($event, 'keyup')"
   >
     <div
       v-for="handle in actualHandles"
@@ -18,6 +20,7 @@
       :style="{display: enabled ? 'block' : 'none'}"
       @mousedown.stop.prevent="handleDown(handle, $event)"
       @touchstart.stop.prevent="handleTouchDown(handle, $event)"
+      @click.prevent.stop
     >
       <slot :name="handle"></slot>
     </div>
@@ -62,6 +65,10 @@ export default {
   replace: true,
   name: 'vue-draggable-resizable',
   props: {
+    resizeCount: {
+      type: Number,
+      default: 0
+    },
     className: {
       type: String,
       default: 'vdr'
@@ -296,6 +303,10 @@ export default {
   },
 
   methods: {
+    // 绑定点击事件和鼠标抬起事件
+    addEvent (event, type) {
+      this.$emit(type, event)
+    },
     // 重置边界和鼠标状态
     resetBoundsAndMouseState () {
       this.mouseClickPosition = { mouseX: 0, mouseY: 0, x: 0, y: 0, w: 0, h: 0 }
@@ -321,7 +332,6 @@ export default {
 
         this.rawRight -= deltaX
         this.rawBottom -= deltaY
-
         this.parentWidth = newParentWidth
         this.parentHeight = newParentHeight
       }
@@ -354,7 +364,6 @@ export default {
     // 元素按下
     elementDown (e) {
       const target = e.target || e.srcElement
-
       if (this.$el.contains(target)) {
         if (this.onDragStart && this.onDragStart(e) === false) {
           return
@@ -388,14 +397,15 @@ export default {
 
         if (this.parent) {
           this.bounds = this.calcDragLimits()
+          console.log(this.calcDragLimits())
         }
-
         addEvent(document.documentElement, eventsFor.move, this.move)
         addEvent(document.documentElement, eventsFor.stop, this.handleUp)
       }
     },
     // 计算移动范围
     calcDragLimits () {
+      console.log(this.parentWidth, this.width, this.left)
       return {
         minLeft: (this.parentWidth + this.left) % this.grid[0],
         maxLeft: Math.floor((this.parentWidth - this.width - this.left) / this.grid[0]) * this.grid[0] + this.left,
@@ -446,7 +456,6 @@ export default {
       } else {
         this.handle = handle
       }
-
       this.resizing = true
 
       this.mouseClickPosition.mouseX = e.touches ? e.touches[0].pageX : e.pageX
@@ -577,7 +586,6 @@ export default {
       const axis = this.axis
       const grid = this.grid
       const mouseClickPosition = this.mouseClickPosition
-
       const tmpDeltaX = axis && axis !== 'y' ? mouseClickPosition.mouseX - (e.touches ? e.touches[0].pageX : e.pageX) : 0
       const tmpDeltaY = axis && axis !== 'x' ? mouseClickPosition.mouseY - (e.touches ? e.touches[0].pageY : e.pageY) : 0
 
@@ -920,6 +928,9 @@ export default {
   },
 
   watch: {
+    resizeCount () {
+      this.checkParentSize()
+    },
     active (val) {
       this.enabled = val
 
@@ -997,7 +1008,6 @@ export default {
       const lockAspectRatio = this.lockAspectRatio
       const right = this.right
       const bottom = this.bottom
-
       if (bounds.minBottom !== null && newBottom < bounds.minBottom) {
         newBottom = bounds.minBottom
       } else if (bounds.maxBottom !== null && bounds.maxBottom < newBottom) {
